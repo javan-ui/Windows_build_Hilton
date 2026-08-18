@@ -1,0 +1,52 @@
+name: Build Hilton High Report Splitter
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "report_splitter.py"
+      - "website_template/**"
+      - ".github/workflows/build-windows.yml"
+
+jobs:
+  build-windows:
+    # Windows 7 compatibility requires the older Windows toolchain rather
+    # than the current Windows 2022 runner and latest Python/PyInstaller.
+    runs-on: windows-2019
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install Python 3.8
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.8.10"
+          architecture: "x64"
+
+      - name: Install Windows 7-compatible dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade "pip<24.1"
+          python -m pip install `
+            "PyMuPDF==1.21.1" `
+            "Pillow==9.5.0" `
+            "openpyxl==3.1.2" `
+            "python-docx==0.8.11" `
+            "pyinstaller==5.13.2"
+
+      - name: Build one-file Windows executable
+        shell: pwsh
+        run: |
+          pyinstaller `
+            --onefile `
+            --windowed `
+            --clean `
+            --name HiltonHighReportSplitter `
+            --add-data "website_template;website_template" `
+            report_splitter(1).py
+
+      - name: Upload executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: HiltonHighReportSplitter-Windows
+          path: dist/HiltonHighReportSplitter.exe
